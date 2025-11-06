@@ -45,12 +45,27 @@
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
+    <!-- 背景音樂元素 (假設有一個名為 quiz_bgm.mp3 的循環音頻文件) -->
+    <audio id="bgm-player" loop preload="auto" src="quiz_bgm.mp3"></audio>
+
     <!-- 主容器：使用更現代的卡片設計 -->
     <div id="quiz-app" class="w-full max-w-lg mx-auto bg-white rounded-3xl shadow-2xl shadow-indigo-200/50 p-6 md:p-10 space-y-8">
 
         <!-- 封面頁 (Start Screen) -->
         <div id="start-screen" class="text-center space-y-12 min-h-[60vh] flex flex-col justify-center items-center">
-            <div class="space-y-3">
+            
+            <!-- 標題與音量控制 -->
+            <div class="space-y-3 relative w-full pt-10">
+                <!-- 音量控制按鈕 (右上角) -->
+                <button id="volume-toggle" class="absolute top-0 right-0 p-2 text-indigo-500 hover:text-indigo-700 transition" onclick="toggleMute()">
+                    <!-- Volume Icon (Lucide Icon: Volume2) -->
+                    <svg id="volume-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                    </svg>
+                </button>
+                
                 <h1 class="text-4xl md:text-5xl font-extrabold text-indigo-900 tracking-tight">
                     你是哪種濕婆？
                 </h1>
@@ -130,7 +145,7 @@
             "Q2a": { level: 2, text: "《電梯裡的選擇》你走進一台空電梯，你會下意識地選擇站哪？", image: "Q2a.jpg", options: [{ text: "站在靠近角落的地方，讓出空間，保有安全感。", next: "Q3a" }, { text: "自然走到正中間的位置，不刻意前進也不刻意後退。", next: "Q3b" }, { text: "挑靠近按鈕的位置，能早點出場、也能清楚電梯行進到哪樓了。", next: "Q3c" }, ] },
             "Q2b": { level: 2, text: "《朋友的邀約》朋友約你參加一場有點陌生的聚會，你已經到現場了。你的狀態是？", image: "Q2b.jpg", options: [{ text: "先找到熟人，確認自己不是一個人。", next: "Q3b" }, { text: "平常心，認識新朋友。不特別找認識的人，也不躲到角落。", next: "Q3d" }, { text: "先在角落，按兵不動，想著如果沒找到認識的人，就悄悄離開。", next: "Q3e" }, ] },
             "Q2c": { level: 2, text: "《空白行事曆》接下來的兩週完全沒安排，望著空白日曆，心裡的感受是？", image: "Q2c.jpg", options: [{ text: "絕佳機會，可以挑戰一直想做卻沒去做的事情。", next: "Q3c" }, { text: "有點空虛，但也有點開心。難得鬆一口氣，可以好好休息。", next: "Q3e" }, { text: "有點焦燥，空白行事曆讓我覺得人生頓失重心。", next: "Q3f" }, ] },
-            "Q3a": { level: 3, text: "《選一本書》你走進書店，想買一本書來看。你最想挑哪種書籍？", image: "Q3a.jpg", options: [{ text: "時間管理與人生規劃類，掌握節奏讓人安心。", next: "Q4-1" }, { text: "散文或哲思類，閱讀時能停下來跟自己的內心對話。", next: "Q4-2" }, { text: "小說或漫畫，讓我可以沉浸在別人創造的世界裡。", next: "A11" }, ] },
+            "Q3a": { level: 3, text: "《選一本書》你走進書店，想買一本書來看。你最想挑哪種書籍？", image: "Q3a.jpg", options: [{ text: "時間管理與人生規劃類，掌握節奏讓人安心。", next: "Q4-1" }, { text: "散文或哲思類，閱讀時能停下來跟自己的內心對話。", next: "Q4-2" }, { text: "小說或漫畫，讓我可以沉浸在別人創造的世界裡。", next: "Q4-3" }, ] }, // 修正：A11 -> Q4-3
             "Q3b": { level: 3, text: "《突如其來的轉變》你被告知明天就要調到別的城市，擔任不同職位了，你會？", image: "Q3b.jpg", options: [{ text: "不多想，直接開始處理相關事宜。邊做邊應對眼前的變化。", next: "Q4-1" }, { text: "有點緊張，但會馬上冷靜下來，規劃新的生活。", next: "Q4-4" }, { text: "需要讓自己休息一下，先好好整理思緒，與現在的生活道別。", next: "Q4-5" }, ] },
             "Q3c": { level: 3, text: "《等人的30分鐘》你等的人遲到了30分鐘，這段時間你通常怎麼度過？", image: "Q3c.jpg", options: [{ text: "傳簡訊問對方在哪，如果沒得到回應，就先離開。", next: "Q4-3" }, { text: "滑手機、看路人，自己打發時間。給對方一點時間。", next: "Q4-4" }, { text: "覺得這半小時也是不錯的休息，就靜靜等著。", next: "Q4-6" }, ] },
             "Q3d": { level: 3, text: "《衝突時刻》與人發生爭執的時候，你會做出什麼反應？", image: "Q3d.jpg", options: [{ text: "擺明立場，據理力爭，絕對不能讓人誤解我。", next: "Q4-7" }, { text: "先聽完對方的立場，再決定怎麼處理。", next: "Q4-2" }, { text: "默默抽身，不多解釋，保持距離，保持平靜。", next: "Q4-8" }, ] },
@@ -175,6 +190,8 @@
         let currentQuestionId = "Q1";
         let history = []; 
         const totalLevels = 5; // 測驗總共 5 級
+        let isMuted = false;
+        let isPlaying = false; // 用於追蹤音樂是否真的在播放
 
         // --- DOM 元素快取 ---
         const $ = id => document.getElementById(id);
@@ -192,14 +209,60 @@
         // 載入元素
         const loadingContainer = $('loading-container');
         const loadingText = $('loading-text');
+        const bgmPlayer = $('bgm-player');
+        const volumeIcon = $('volume-icon');
 
 
-        // --- 功能函數 ---
+        // --- 音訊控制函數 ---
+
+        /** * 渲染音量圖示 (使用 Lucide SVG)
+         * Volume2: 有聲音
+         * VolumeX: 靜音
+         */
+        function renderVolumeIcon() {
+            const iconContent = isMuted 
+                ? `<path d="M11 5L6 9H2V15H6L11 19V5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/> <line x1="22" y1="9" x2="16" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/> <line x1="16" y1="9" x2="22" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` // VolumeX
+                : `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/> <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/> <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>`; // Volume2
+            
+            volumeIcon.innerHTML = iconContent;
+        }
+
+        /** 處理靜音切換 */
+        window.toggleMute = function() {
+            isMuted = !isMuted;
+            bgmPlayer.muted = isMuted;
+            renderVolumeIcon();
+
+            // 如果音樂沒有在播放 (例如剛進入頁面)，嘗試播放它
+            if (!isPlaying && !isMuted) {
+                 bgmPlayer.play().then(() => {
+                    isPlaying = true;
+                }).catch(e => {
+                    // 如果用戶互動不允許播放，保持 isPlaying 為 false
+                    console.warn("Audio playback blocked:", e);
+                });
+            } else if (isPlaying && isMuted) {
+                // 如果已在播放並切換到靜音，則保持播放但靜音
+            }
+        };
+
+        /** 首次互動時啟動音樂 (解決瀏覽器自動播放限制) */
+        function startMusicOnInteraction() {
+            if (!isPlaying && !isMuted) {
+                bgmPlayer.play().then(() => {
+                    isPlaying = true;
+                    console.log("BGM started successfully.");
+                }).catch(e => {
+                    console.warn("BGM auto-play blocked, wait for next interaction.");
+                });
+            }
+        }
+
+        // --- 核心功能函數 ---
 
         /** 1. 圖片啟動載入 (僅載入 Q1.jpg) */
         function loadQ1Image() {
             loadingText.textContent = "正在載入啟動圖片...";
-
             // 創建 Image 物件來載入 Q1.jpg
             const q1Image = new Image();
             q1Image.src = "Q1.jpg";
@@ -208,7 +271,6 @@
                 // Q1 圖片載入完成 (或失敗)，立即解除鎖定
                 loadingContainer.classList.add('hidden'); // 隱藏載入提示
                 startButton.classList.remove('hidden'); // 顯示開始按鈕
-                // 為了用戶體驗，如果載入失敗，我們也允許其繼續，因為 Q1.jpg 預期是存在的。
             };
         }
 
@@ -287,7 +349,6 @@
             imagePlaceholder.className = `image-container bg-indigo-200 mx-auto w-full shadow-xl rounded-2xl`;
             
             // 圖片路徑使用相對路徑，並添加錯誤處理
-            // 圖片由瀏覽器即時載入，依靠瀏覽器的快取和並行下載能力
             imagePlaceholder.innerHTML = `
                 <img 
                     src="${data.image}" 
@@ -347,7 +408,8 @@
                         
                         <!-- 按鈕區 -->
                         <div class="space-y-4 pt-4">
-                            <a href="${resultData.url}" target="_blank" class="block mx-auto w-full max-w-xs py-4 bg-indigo-600 text-white text-xl font-bold rounded-full quiz-button-effect hover:bg-indigo-700 transition duration-300">
+                            <!-- 移除 target="_blank" 讓網頁在同一個視窗打開 -->
+                            <a href="${resultData.url}" class="block mx-auto w-full max-w-xs py-4 bg-indigo-600 text-white text-xl font-bold rounded-full quiz-button-effect hover:bg-indigo-700 transition duration-300">
                                 點擊查看詳細分析
                             </a>
                             <button onclick="window.location.reload();" class="block mx-auto w-full max-w-xs py-4 bg-gray-200 text-gray-700 text-xl font-bold rounded-full quiz-button-effect hover:bg-gray-300 transition duration-300 transform-none shadow-none">
@@ -361,14 +423,20 @@
 
         /** 8. 啟動測驗流程 */
         document.addEventListener('DOMContentLoaded', () => {
+            // 初始渲染音量圖示 (預設未靜音)
+            renderVolumeIcon();
+
             // 初始狀態：載入容器顯示，按鈕隱藏
             loadingContainer.classList.remove('hidden');
             startButton.classList.add('hidden');
 
-            // 僅載入第一張圖片
+            // 僅載入第一張圖片，優化啟動速度
             loadQ1Image();
             
             startButton.addEventListener('click', () => {
+                // 首次互動時嘗試播放音樂
+                startMusicOnInteraction();
+
                 currentQuestionId = "Q1";
                 history = []; 
                 renderQuestion(currentQuestionId);
