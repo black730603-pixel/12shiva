@@ -61,6 +61,13 @@
             <button id="start-button" class="quiz-button-effect w-full max-w-xs py-4 bg-indigo-600 text-white text-xl font-bold rounded-full hover:bg-indigo-700 transition duration-300 transform scale-100 hover:scale-[1.02]">
                 開始測試
             </button>
+            <p id="loading-indicator" class="text-sm font-medium text-indigo-500 hidden">
+                圖片加載中，請稍候...
+            </p>
+            <!-- 封面頁底部版權文字 (使用 mt-auto 將其推到最下方) -->
+            <p class="text-xs text-gray-400 mt-auto pt-8">
+                靈根吉吉開運好物製販所 2025年出品
+            </p>
         </div>
 
         <!-- 測驗內容頁 (Quiz Screen) -->
@@ -178,10 +185,54 @@
         const redoButton = $('redo-button');
         const progressBar = $('progress-bar');
         const levelDisplay = $('level-display');
+        const loadingIndicator = $('loading-indicator');
 
         // --- 功能函數 ---
 
-        /** 1. 導航和屏幕切換 */
+        /** 1. 圖片預加載 */
+        function preloadImages() {
+            const allImages = new Set();
+            
+            // 收集所有問題圖片 (Q1.jpg, Q2a.jpg, etc.)
+            for (const id in quizData) {
+                const data = quizData[id];
+                if (data.image) {
+                    allImages.add(data.image);
+                }
+            }
+            
+            // 收集所有結果圖片 (A01.jpg, A02.jpg, etc.)
+            for (let i = 1; i <= 12; i++) {
+                const resultId = 'A' + i.toString().padStart(2, '0');
+                allImages.add(`${resultId}.jpg`);
+            }
+
+            let loadedCount = 0;
+            const totalImages = allImages.size;
+
+            return new Promise(resolve => {
+                // 如果沒有圖片要載入，直接解決 Promise
+                if (totalImages === 0) {
+                    resolve();
+                    return;
+                }
+
+                allImages.forEach(src => {
+                    const img = new Image();
+                    img.src = src;
+                    img.onload = img.onerror = () => {
+                        loadedCount++;
+                        // 這裡可以選擇更新加載進度提示 (如果需要)
+                        if (loadedCount === totalImages) {
+                            resolve(); // 所有圖片載入完成
+                        }
+                    };
+                });
+            });
+        }
+
+
+        /** 2. 導航和屏幕切換 */
         function showScreen(screenId) {
             startScreen.classList.add('hidden');
             quizScreen.classList.add('hidden');
@@ -196,7 +247,7 @@
             }
         }
         
-        /** 2. 更新進度條 */
+        /** 3. 更新進度條 */
         function updateProgressBar(level) {
             // 計算已完成的級別數 (Level 1 完成 0 級，Level 5 完成 4 級)
             const completedQuestions = level - 1;
@@ -216,14 +267,14 @@
             }
         }
         
-        /** 3. 處理選擇答案 */
+        /** 4. 處理選擇答案 */
         window.handleAnswer = function(nextId) {
             history.push(currentQuestionId); // 紀錄當前問題 ID
             currentQuestionId = nextId;
             renderQuestion(currentQuestionId);
         };
 
-        /** 4. 處理重做 (返回上一個題目) */
+        /** 5. 處理重做 (返回上一個題目) */
         window.handleRedo = function() {
             if (history.length > 0) {
                 const prevId = history.pop(); // 彈出上一個問題 ID
@@ -235,7 +286,7 @@
             }
         };
 
-        /** 5. 渲染問題畫面 (圖片 16:9) */
+        /** 6. 渲染問題畫面 (圖片 16:9) */
         function renderQuestion(id) {
             const data = quizData[id];
             
@@ -280,7 +331,7 @@
             }).join('');
         }
 
-        /** 6. 渲染結果畫面 (圖片 1:1 正方形) */
+        /** 7. 渲染結果畫面 (圖片 1:1 正方形) */
         function renderResult(resultId, resultData) {
             
             // 處理結果名稱，只取中文部分
@@ -329,13 +380,22 @@
             `;
         }
 
-        /** 7. 啟動測驗流程 */
+        /** 8. 啟動測驗流程 */
         document.addEventListener('DOMContentLoaded', () => {
-            // 嘗試播放音樂，處理瀏覽器自動播放限制
-            bgMusic.volume = 0.5;
-            bgMusic.play().catch(e => console.log("Audio autoplay blocked."));
-            
-            showScreen('start');
+            // 在開始時預先載入所有圖片
+            loadingIndicator.classList.remove('hidden');
+            startButton.disabled = true;
+
+            preloadImages().then(() => {
+                loadingIndicator.textContent = '加載完成！';
+                startButton.disabled = false;
+                
+                // 嘗試播放音樂，處理瀏覽器自動播放限制
+                bgMusic.volume = 0.5;
+                bgMusic.play().catch(e => console.log("Audio autoplay blocked."));
+                
+                showScreen('start');
+            });
             
             startButton.addEventListener('click', () => {
                 // 確保在使用者首次互動後能夠播放音樂
