@@ -59,7 +59,7 @@
                 </p>
             </div>
             
-            <!-- 載入容器 (圖片加載時顯示) -->
+            <!-- 載入容器 (圖片加載時/未載入 Q1 時顯示) -->
             <div id="loading-container" class="space-y-2 w-full max-w-xs mx-auto">
                 <p id="loading-text" class="text-sm font-semibold text-indigo-600">
                     圖片加載中 (0%)
@@ -69,7 +69,7 @@
                 </div>
             </div>
             
-            <!-- 開始按鈕 (圖片加載完成後才顯示) -->
+            <!-- 開始按鈕 (Q1 圖片載入完成後才顯示，並替換載入容器的位置) -->
             <button id="start-button" class="quiz-button-effect w-full max-w-xs py-4 bg-indigo-600 text-white text-xl font-bold rounded-full hover:bg-indigo-700 transition duration-300 transform scale-100 hover:scale-[1.02] hidden">
                 開始測試
             </button>
@@ -192,7 +192,7 @@
         const progressBar = $('progress-bar');
         const levelDisplay = $('level-display');
         
-        // 新增的載入元素
+        // 載入元素
         const loadingContainer = $('loading-container');
         const loadingText = $('loading-text');
         const visualProgressBar = $('visual-progress-bar');
@@ -200,19 +200,18 @@
 
         // --- 功能函數 ---
 
-        /** 1. 圖片預加載 */
+        /** 1. 圖片預加載 (優化為分級載入) */
         function preloadImages() {
             const allImages = new Set();
+            let isQ1Loaded = false;
             
-            // 收集所有問題圖片 (Q1.jpg, Q2a.jpg, etc.)
+            // 收集所有問題圖片和結果圖片的 URL
             for (const id in quizData) {
                 const data = quizData[id];
                 if (data.image) {
                     allImages.add(data.image);
                 }
             }
-            
-            // 收集所有結果圖片 (A01.jpg, A02.jpg, etc.)
             for (let i = 1; i <= 12; i++) {
                 const resultId = 'A' + i.toString().padStart(2, '0');
                 allImages.add(`${resultId}.jpg`);
@@ -220,6 +219,7 @@
 
             let loadedCount = 0;
             const totalImages = allImages.size;
+            let imagesToLoad = Array.from(allImages);
 
             return new Promise(resolve => {
                 if (totalImages === 0) {
@@ -232,20 +232,33 @@
                 visualProgressBar.style.width = `0%`;
 
 
-                allImages.forEach(src => {
+                imagesToLoad.forEach(src => {
                     const img = new Image();
                     img.src = src;
                     img.onload = img.onerror = () => {
                         loadedCount++;
                         const percentage = Math.round((loadedCount / totalImages) * 100);
                         
-                        // 更新視覺回饋
-                        loadingText.textContent = `圖片加載中 (${percentage}%)`;
-                        visualProgressBar.style.width = `${percentage}%`;
-
-                        if (loadedCount === totalImages) {
-                            resolve(); // 所有圖片載入完成
+                        // --- 關鍵優化邏輯 ---
+                        if (src === 'Q1.jpg' && !isQ1Loaded) {
+                            // 只要 Q1 載入完成，就立即解除阻擋 (無論總進度多少)
+                            isQ1Loaded = true;
+                            loadingContainer.classList.add('hidden');
+                            startButton.classList.remove('hidden');
+                            // 同時改變載入文字，提供用戶反饋
+                            loadingText.textContent = `載入完成，可開始測試！`;
                         }
+
+                        // 持續更新視覺回饋 (即使按鈕已顯示，也應更新進度直到 100%)
+                        if (loadedCount !== totalImages) {
+                            visualProgressBar.style.width = `${percentage}%`;
+                            loadingText.textContent = `圖片加載中 (${percentage}%)`;
+                        } else {
+                            visualProgressBar.style.width = `100%`;
+                            // 總載入完成，解決 Promise
+                            resolve(); 
+                        }
+                        // --- 結束關鍵優化邏輯 ---
                     };
                 });
             });
@@ -403,12 +416,10 @@
             loadingContainer.classList.remove('hidden');
             startButton.classList.add('hidden');
 
+            // 開始分級載入
             preloadImages().then(() => {
-                // 載入完成：隱藏載入容器，顯示按鈕
-                loadingContainer.classList.add('hidden');
-                startButton.classList.remove('hidden');
-                
-                showScreen('start');
+                // 所有圖片載入完成，但 UI 已經在 Q1 載入時解鎖
+                // 可以在這裡放一些最終完成的確認邏輯
             });
             
             startButton.addEventListener('click', () => {
