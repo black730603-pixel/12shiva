@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>你是哪種濕婆？(V2.1)</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 使用 Inter 字體 */
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; } /* 淺灰藍背景 */
+        
+        /* 定義圖片容器的 16:9 比例 (橫式) - 僅用於測驗頁面 */
+        .image-container {
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio (9/16 * 100%) */
+            position: relative;
+            overflow: hidden;
+        }
+        .image-container img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.3s ease-in-out;
+        }
+        /* 現代按鈕樣式 */
+        .quiz-button-effect {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            /* 使用更柔和的陰影作為基礎 */
+            box-shadow: 0 8px 15px -3px rgba(59, 130, 246, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+        .quiz-button-effect:hover {
+            transform: translateY(-3px);
+            /* 提升陰影效果 */
+            box-shadow: 0 15px 25px -5px rgba(59, 130, 246, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        .quiz-button-effect:active {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- 主容器：使用更現代的卡片設計 -->
+    <div id="quiz-app" class="w-full max-w-lg mx-auto bg-white rounded-3xl shadow-2xl shadow-indigo-200/50 p-6 md:p-10 space-y-8">
+
+        <!-- 封面頁 (Start Screen) -->
+        <div id="start-screen" class="text-center space-y-12 min-h-[60vh] flex flex-col justify-center items-center">
+            <div class="space-y-3">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-indigo-900 tracking-tight">
+                    你是哪種濕婆？
+                </h1>
+                <p class="text-lg md:text-xl font-medium text-gray-500">
+                    發覺內心深處的濕婆法相，揭曉專屬開運法則
+                </p>
+            </div>
+            <button id="start-button" class="quiz-button-effect w-full max-w-xs py-4 bg-indigo-600 text-white text-xl font-bold rounded-full hover:bg-indigo-700 transition duration-300 transform scale-100 hover:scale-[1.02]">
+                開始測試
+            </button>
+        </div>
+
+        <!-- 測驗內容頁 (Quiz Screen) -->
+        <div id="quiz-screen" class="hidden min-h-[70vh] flex flex-col justify-between">
+            
+            <!-- 問題、圖片容器 (上部)：將圖片上移到最貼近卡片頂部 -->
+            <div class="flex-grow space-y-4 -mt-6"> <!-- 增加負上邊距 (-mt-6) 以最小化與卡片頂部的空間 -->
+                <!-- 圖片區域：先顯示圖片 (16:9) -->
+                <div id="image-placeholder" class="image-container mx-auto w-full shadow-xl rounded-2xl bg-gray-200">
+                    <!-- 圖片將由 JS 注入 -->
+                </div>
+                <!-- 標題/問題文字：後顯示標題 -->
+                <header class="text-center px-4"> <!-- 增加左右 padding 確保文字不貼邊 -->
+                    <p id="question-text" class="text-xl md:text-2xl font-bold text-gray-800 leading-relaxed">
+                        <!-- 題目文字 -->
+                    </p>
+                </header>
+            </div>
+
+            <!-- 選項、重做、進度條 (下部) -->
+            <div class="space-y-5 pt-8">
+                <div id="options-container" class="space-y-3">
+                    <!-- 選項按鈕將由 JS 注入 -->
+                </div>
+                
+                <!-- 底部控制條：重做與進度 -->
+                <div class="flex justify-between items-center space-x-4">
+                    <!-- 重做按鈕 (只在 Q1 之後顯示) -->
+                    <button id="redo-button" onclick="handleRedo()" class="text-sm font-medium text-indigo-500 hover:text-indigo-700 transition hidden">
+                        返回上題
+                    </button>
+                    <!-- 進度條容器 -->
+                    <div id="progress-bar-container" class="flex-grow h-2 bg-indigo-100 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-indigo-600 transition-all duration-300 ease-in-out" style="width: 0%;"></div>
+                    </div>
+                    <!-- 剩餘題數提示文字 -->
+                    <span id="level-display" class="text-sm font-semibold text-indigo-600 min-w-[60px] text-right"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 結果頁 (Result Screen) -->
+        <div id="result-screen" class="hidden">
+            <!-- 結果內容將由 JS 注入 -->
+        </div>
+        
+    </div>
+    
+    <!-- 音訊元素：若無實際音訊檔，可能無法播放，但保留結構 -->
+    <audio id="bg-music" loop preload="auto" src="12shiva.mp3"></audio>
+
+    <script>
+        // --- 靜態資料 ---
+        const quizData = {
+            "Q1": { level: 1, text: "《突如其來的休假》你一早醒來，接到通知，今天臨時放假一天，腦中第一個念頭是？", image: "Q1.jpg", options: [{ text: "馬上安排行程，出門遊玩，絕不浪費這麼完美的一天！", next: "Q2a" }, { text: "睡回籠覺，不設鬧鐘。就想這樣睡到自然醒。", next: "Q2b" }, { text: "不出門不說話，安靜待在家。享受專屬自己的空白。", next: "Q2c" }, ] },
+            "Q2a": { level: 2, text: "《電梯裡的選擇》你走進一台空電梯，你會下意識地選擇站哪？", image: "Q2a.jpg", options: [{ text: "站在靠近角落的地方，讓出空間，保有安全感。", next: "Q3a" }, { text: "自然走到正中間的位置，不刻意前進也不刻意後退。", next: "Q3b" }, { text: "挑靠近按鈕的位置，能早點出場、也能清楚電梯行進到哪樓了。", next: "Q3c" }, ] },
+            "Q2b": { level: 2, text: "《朋友的邀約》朋友約你參加一場有點陌生的聚會，你已經到現場了。你的狀態是？", image: "Q2b.jpg", options: [{ text: "先找到熟人，確認自己不是一個人。", next: "Q3b" }, { text: "平常心，認識新朋友。不特別找認識的人，也不躲到角落。", next: "Q3d" }, { text: "先在角落，按兵不動，想著如果沒找到認識的人，就悄悄離開。", next: "Q3e" }, ] },
+            "Q2c": { level: 2, text: "《空白行事曆》接下來的兩週完全沒安排，望著空白日曆，心裡的感受是？", image: "Q2c.jpg", options: [{ text: "絕佳機會，可以挑戰一直想做卻沒去做的事情。", next: "Q3c" }, { text: "有點空虛，但也有點開心。難得鬆一口氣，可以好好休息。", next: "Q3e" }, { text: "有點焦燥，空白行事曆讓我覺得人生頓失重心。", next: "Q3f" }, ] },
+            "Q3a": { level: 3, text: "《選一本書》你走進書店，想買一本書來看。你最想挑哪種書籍？", image: "Q3a.jpg", options: [{ text: "時間管理與人生規劃類，掌握節奏讓人安心。", next: "Q4-1" }, { text: "散文或哲思類，閱讀時能停下來跟自己的內心對話。", next: "Q4-2" }, { text: "小說或漫畫，讓我可以沉浸在別人創造的世界裡。", next: "A11" }, ] },
+            "Q3b": { level: 3, text: "《突如其來的轉變》你被告知明天就要調到別的城市，擔任不同職位了，你會？", image: "Q3b.jpg", options: [{ text: "不多想，直接開始處理相關事宜。邊做邊應對眼前的變化。", next: "Q4-1" }, { text: "有點緊張，但會馬上冷靜下來，規劃新的生活。", next: "Q4-4" }, { text: "需要讓自己休息一下，先好好整理思緒，與現在的生活道別。", next: "Q4-5" }, ] },
+            "Q3c": { level: 3, text: "《等人的30分鐘》你等的人遲到了30分鐘，這段時間你通常怎麼度過？", image: "Q3c.jpg", options: [{ text: "傳簡訊問對方在哪，如果沒得到回應，就先離開。", next: "Q4-3" }, { text: "滑手機、看路人，自己打發時間。給對方一點時間。", next: "Q4-4" }, { text: "覺得這半小時也是不錯的休息，就靜靜等著。", next: "Q4-6" }, ] },
+            "Q3d": { level: 3, text: "《衝突時刻》與人發生爭執的時候，你會做出什麼反應？", image: "Q3d.jpg", options: [{ text: "擺明立場，據理力爭，絕對不能讓人誤解我。", next: "Q4-7" }, { text: "先聽完對方的立場，再決定怎麼處理。", next: "Q4-2" }, { text: "默默抽身，不多解釋，保持距離，保持平靜。", next: "Q4-8" }, ] },
+            "Q3e": { level: 3, text: "《失聯的感覺》你人在外面，才發現手機沒電。你會？", image: "Q3e.jpg", options: [{ text: "馬上找地方充電，不能讓別人找不到我。", next: "Q4-4" }, { text: "既然無法開機，就暫時離開大家享受沉靜。", next: "Q4-8" }, { text: "雖然有點不安，但也許正好放空一下。", next: "Q4-9" }, ] },
+            "Q3f": { level: 3, text: "《夜晚的你》深夜睡不著，身邊沒人干擾的時刻，你最常做什麼？", image: "Q3f.jpg", options: [{ text: "癱在沙發上耍廢滑手機，想讓自己徹底放心。", next: "Q4-3" }, { text: "收拾東西、整理房間，讓一切井然有序。", next: "Q4-7" }, { text: "面對空無一人的黑暗，腦中冒出「我是不是不夠好」的聲音，自我懷疑。", next: "Q4-6" }, ] },
+            "Q4-1": { level: 4, text: "《你怎麼領導？》你被上級指定擔任專案負責人，你會？", image: "Q4-1.jpg", options: [{ text: "把所有細節攬起來埋頭苦幹，盡量不要麻煩其他組員。", next: "Q5-1" }, { text: "把任務分配給適當的人，信任每位成員的能力。", next: "Q5-2" }, { text: "疑惑為什麼非得是自己，邊在心裡抱怨，邊硬著頭皮做完。", next: "Q5-3" }, ] },
+            "Q4-2": { level: 4, text: "《焦慮出現時》當你感到焦慮時，會呈現哪種狀態？", image: "Q4-2.jpg", options: [{ text: "雖然心跳變快，但我相信自己有辦法克服。", next: "Q5-4" }, { text: "只想關掉外界所有聲音，讓自己靜下來。", next: "Q5-5" }, { text: "外表冷靜，但內心像一百萬顆炸彈同時爆炸。", next: "Q5-6" }, ] },
+            "Q4-3": { level: 4, text: "《理想關係》你最嚮往哪一種人際關係？", image: "Q4-3.jpg", options: [{ text: "保有一定距離，就算有不同的想法，也能相互尊重。", next: "Q5-7" }, { text: "靜靜陪伴就很好，彼此理解，不須過多解釋。", next: "Q5-8" }, { text: "能一起面對挑戰、互相激勵成長的夥伴。", next: "Q5-9" }, ] },
+            "Q4-4": { level: 4, text: "《世界的本質》你認為世界的本質是怎樣的？", image: "Q4-4.jpg", options: [{ text: "一分耕耘，必定有一分收獲。", next: "Q5-10" }, { text: "不管別人怎麼想，我只對自己的人生負責。", next: "Q5-11" }, { text: "世界沒有標準答案，看開的人更自在。", next: "Q5-12" }, ] },
+            "Q4-5": { level: 4, text: "《我不屬於大家》當你在團體裡格格不入時，你會選擇怎麼做？", image: "Q4-5.jpg", options: [{ text: "試著融入大家，就算不舒服也不想被排擠。", next: "Q5-1" }, { text: "靠近一兩個能信任的人，保持中立觀察。", next: "Q5-4" }, { text: "想辦法讓自己消失在公眾視野，沒人發現最好。", next: "Q5-7" }, ] },
+            "Q4-6": { level: 4, text: "《五年後的我》別人問你：「五年後你希望自己是什麼樣子的？」你會？", image: "Q4-6.jpg", options: [{ text: "我目標明確，朝著目標，有規劃地一步一步前進。", next: "Q5-2" }, { text: "想太遠也沒用，只是製造焦慮，選擇活在當下。", next: "Q5-5" }, { text: "我沒想過這種事，好像未來變成怎樣都可以。", next: "Q5-9" }, ] },
+            "Q4-7": { level: 4, text: "《小團體》當你在小團體中觀察到微妙的權力氣氛，你的行為會是？", image: "Q4-7.jpg", options: [{ text: "拿捏距離、說話得體，避免捲入風暴。", next: "Q5-3" }, { text: "默默觀察誰是核心，和他建立穩固關係。", next: "Q5-6" }, { text: "裝傻、裝笨、裝沒事。", next: "Q5-11" }, ] },
+            "Q4-8": { level: 4, text: "《當秩序崩解》生活中的某項制度突然崩解，舊規則失效。你的反應是？", image: "Q4-8.jpg", options: [{ text: "趕快找到新的標準，或值得依附的權威。", next: "Q5-8" }, { text: "看看其他人怎麼應對，邊觀察邊適應。", next: "Q5-10" }, { text: "假裝沒看到變動，反正事情總是再變化。", next: "Q5-12" }, ] },
+            "Q4-9": { level: 4, text: "《我選擇逃避》你知道自己正在逃避某件事，最有可能的原因是？", image: "Q4-9.jpg", options: [{ text: "還沒準備好接受後果。", next: "Q5-1" }, { text: "害怕現有的一切崩塌。", next: "Q5-4" }, { text: "我其實不知道自己在逃避什麼，只是想到要面對現實就很累。", next: "Q5-9" }, ] },
+            "Q5-1": { level: 5, text: "《世界末日》你得知世界將在24小時內終結，沒有反轉餘地。你會？", image: "Q5-1.jpg", options: [{ text: "辦場大趴，和喜歡的人一起瘋到最後。", next: "A02" }, { text: "提筆寫下遺書，把重要的事留給下一次文明。", next: "A04" }, { text: "獨自走進山林，享受最後的日落與星空。", next: "A12" }, ] },
+            "Q5-2": { level: 5, text: "《變成喪屍》你變成了喪屍，還保有人類的思維。面對四處逃竄的群眾，你會怎麼做？", image: "Q5-2.jpg", options: [{ text: "找地方藏起來，盡量不傷害到別人。", next: "A09" }, { text: "試著聯絡老朋友，請他們想辦法讓我變回去。", next: "A11" }, { text: "接受新的身分，重新定義什麼是活著。", next: "A01" }, ] },
+            "Q5-3": { level: 5, text: "《吸血鬼友人》你發現最親密的朋友其實是吸血鬼，並且喝過你的血。你的反應是？", image: "Q5-3.jpg", options: [{ text: "不行，這關係太不健康，我必須抽身。", next: "A05" }, { text: "先問清楚他為什麼這樣做，我想理解他。", next: "A06" }, { text: "太酷了吧！我也想當吸血鬼。", next: "A03" }, ] },
+            "Q5-4": { level: 5, text: "《超能力》如果你擁有以下三種超能力之一，你會選哪個？", image: "Q5-4.jpg", options: [{ text: "預知未來，但無法改變它。", next: "A10" }, { text: "瞬間移動，想到哪去到哪。", next: "A07" }, { text: "說的任何話，別人都會相信。", next: "A04" }, ] },
+            "Q5-5": { level: 5, text: "《永遠的夢》被困在一場不斷重複的夢境中，醒不來。你會怎麼應對？", image: "Q5-5.jpg", options: [{ text: "嘗試改變夢的劇情，看能不能跳出來。", next: "A11" }, { text: "建立自己的規則，把夢變成能夠控制的自由世界。", next: "A01" }, { text: "順著夢走，讓潛意識告訴我正確的答案。", next: "A12" }, ] },
+            "Q5-6": { level: 5, text: "《穿越到古代》一覺醒來，你穿越到古代，成為皇宮裡的王/后，天下等你決策，你會？", image: "Q5-6.jpg", options: [{ text: "建制度、定規矩、強化軍備。", next: "A08" }, { text: "舉辦盛大祭典，走入群眾之中，打造文化盛世。", next: "A02" }, { text: "找信賴的幕僚，實際上當個有權但不用太累的君主。", next: "A06" }, ] },
+            "Q5-7": { level: 5, text: "《讓人消失》你發現一個神祕開關，只要按下就能讓指定的人從世界上消失。你會？", image: "Q5-7.jpg", options: [{ text: "直接毀掉，這能力太危險了。", next: "A09" }, { text: "藏起來，只有真的必要時才用。", next: "A05" }, { text: "保留它，或許有一天，能為世界解決麻煩。", next: "A07" }, ] },
+            "Q5-8": { level: 5, text: "《無人太空船》你被困在無人太空船，外面一片虛無，無法與外界聯繫，你會？", image: "Q5-8.jpg", options: [{ text: "紀錄最後時光，希望有人能發現我曾經存在。", next: "A10" }, { text: "拼死修復太空船，試著重返地球。", next: "A04" }, { text: "利用太空船的科技尋找新星球，在上面定居，成為拓荒者。", next: "A03" }, ] },
+            "Q5-9": { level: 5, text: "《神奇的門》你偶然打開一道門，裡頭是另一個「你」主導的宇宙，你會？", image: "Q5-9.jpg", options: [{ text: "想辦法進去，和那個自己交換身分。", next: "A11" }, { text: "觀察對面的世界，想學到我原本缺少的部分。", next: "A01" }, { text: "默默關門，不打擾那個版本的自己。", next: "A08" }, ] },
+            "Q5-10": { level: 5, text: "《外星人》外星人要你為全人類下定義，你會？", image: "Q5-10.jpg", options: [{ text: "推薦閱讀經典文學，向他們展現人類的偉大與矛盾。", next: "A12" }, { text: "建議外星人自己觀察。", next: "A09" }, { text: "要外星人放我回家，我才不想定義任何人。", next: "A03" }, ] },
+            "Q5-11": { level: 5, text: "《情緒具現化》你感染新病毒，內心情緒會變成現實中的物件。你會？", image: "Q5-11.jpg", options: [{ text: "強迫自己冷靜，避免情緒失控變成災難。", next: "A06" }, { text: "把內在的想像都當作創作素材記錄下來。", next: "A10" }, { text: "故意試試看，如果把「愛」或「恨」放大會發生什麼事。", next: "A02" }, ] },
+            "Q5-12": { level: 5, text: "《獲得永生》你永遠不會老也不會死，眼看著世界都隨著時光流逝。你會選擇怎麼活？", image: "Q5-12.jpg", options: [{ text: "每一百年變更一次身分，混在人類社會裡。", next: "A01" }, { text: "尋找結束永生的方法，這樣活著太孤獨了。", next: "A05" }, { text: "成為知識保管者，將人類的歷史完整傳承下去。", next: "A08" }, ] },
+            "A01": { result: true, title: "無生濕婆（Parameshwara，परमेश्वर）", name: "無生濕婆", url: "https://lingamjiji.com/2025/05/30/01_parameshwara/" },
+            "A02": { result: true, title: "大天濕婆（Mahadeva，महादेव）", name: "大天濕婆", url: "https://lingamjiji.com/2025/05/30/02_mahadeva/" },
+            "A03": { result: true, title: "喜樂濕婆（Shivanatha，शिवनाथ）", name: "喜樂濕婆", url: "https://lingamjiji.com/2025/05/30/03_shivanatha/" },
+            "A04": { result: true, title: "福氣濕婆（Shivashankara，शिवशङ्कर）", name: "福氣濕婆", url: "https://lingamjiji.com/2025/05/30/04_shivashankara/" },
+            "A05": { result: true, title: "青頸濕婆（Neelakantha，नीलकण्ठ）", name: "青頸濕婆", url: "https://lingamjiji.com/2025/05/30/05_neelakantha/" },
+            "A06": { result: true, title: "三目濕婆（Trinetra，त्रिनेत्र）", name: "三目濕婆", url: "https://lingamjiji.com/2025/05/30/06_trinetra/" },
+            "A07": { result: true, title: "暴風濕婆（Rudra，रुद्र）", name: "暴風濕婆", url: "https://lingamjiji.com/2025/05/30/07_rudra/" },
+            "A08": { result: true, title: "恐怖濕婆（Bhairava，भैरव）", name: "恐怖濕婆", url: "https://lingamjiji.com/2025/05/30/08_bhairava/" },
+            "A09": { result: true, title: "獸主濕婆（Pashupati，पशुपति）", name: "獸主濕婆", url: "https://lingamjiji.com/2025/05/30/09_pashupati/" },
+            "A10": { result: true, title: "山主濕婆（Girisha，गिरीश）", name: "山主濕婆", url: "https://lingamjiji.com/2025/05/30/10_girisha/" },
+            "A11": { result: true, title: "時主濕婆（Kala Bhairava，काल भैरव）", name: "時主濕婆", url: "https://lingamjiji.com/2025/05/30/11_kalabhairava/" },
+            "A12": { result: true, title: "銀河濕婆（Gangadhara，गङ्गाधर）", name: "銀河濕婆", url: "https://lingamjiji.com/2025/05/30/12_gangadhara/" },
+        };
+
+        // --- 狀態變數 ---
+        let currentQuestionId = "Q1";
+        let history = []; 
+        const totalLevels = 5; // 測驗總共 5 級
+
+        // --- DOM 元素快取 ---
+        const $ = id => document.getElementById(id);
+        const startScreen = $('start-screen');
+        const quizScreen = $('quiz-screen');
+        const resultScreen = $('result-screen');
+        const startButton = $('start-button');
+        const bgMusic = $('bg-music');
+        const questionText = $('question-text');
+        const imagePlaceholder = $('image-placeholder');
+        const optionsContainer = $('options-container');
+        const redoButton = $('redo-button');
+        const progressBar = $('progress-bar');
+        const levelDisplay = $('level-display');
+
+        // --- 功能函數 ---
+
+        /** 1. 導航和屏幕切換 */
+        function showScreen(screenId) {
+            startScreen.classList.add('hidden');
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            
+            if (screenId === 'start') {
+                startScreen.classList.remove('hidden');
+            } else if (screenId === 'quiz') {
+                quizScreen.classList.remove('hidden');
+            } else if (screenId === 'result') {
+                resultScreen.classList.remove('hidden');
+            }
+        }
+        
+        /** 2. 更新進度條 */
+        function updateProgressBar(level) {
+            // 計算已完成的級別數 (Level 1 完成 0 級，Level 5 完成 4 級)
+            const completedQuestions = level - 1;
+            const progress = completedQuestions / totalLevels; 
+            const percentage = Math.round(progress * 100);
+            
+            // 顯示目前級別
+            levelDisplay.textContent = `第 ${level} 級 / 5`;
+            
+            progressBar.style.width = `${percentage}%`;
+            
+            // 處理重做按鈕顯示
+            if (level > 1) {
+                redoButton.classList.remove('hidden');
+            } else {
+                redoButton.classList.add('hidden');
+            }
+        }
+        
+        /** 3. 處理選擇答案 */
+        window.handleAnswer = function(nextId) {
+            history.push(currentQuestionId); // 紀錄當前問題 ID
+            currentQuestionId = nextId;
+            renderQuestion(currentQuestionId);
+        };
+
+        /** 4. 處理重做 (返回上一個題目) */
+        window.handleRedo = function() {
+            if (history.length > 0) {
+                const prevId = history.pop(); // 彈出上一個問題 ID
+                currentQuestionId = prevId;
+                renderQuestion(currentQuestionId);
+            } else {
+                currentQuestionId = "Q1";
+                showScreen('start');
+            }
+        };
+
+        /** 5. 渲染問題畫面 (圖片 16:9) */
+        function renderQuestion(id) {
+            const data = quizData[id];
+            
+            if (!data || data.result) {
+                renderResult(id, data);
+                return;
+            }
+            
+            showScreen('quiz');
+
+            const level = data.level;
+            updateProgressBar(level);
+
+            questionText.textContent = data.text;
+            
+            // 圖片容器 (使用默認的 16:9 比例 .image-container)
+            imagePlaceholder.className = `image-container bg-indigo-200 mx-auto w-full shadow-xl rounded-2xl`;
+            
+            // 圖片路徑使用相對路徑，並添加錯誤處理
+            imagePlaceholder.innerHTML = `
+                <img 
+                    src="${data.image}" 
+                    alt="問題 ${id} 的情境圖片" 
+                    class="rounded-2xl"
+                    onerror="this.style.opacity='0';"
+                    onload="if(this.naturalWidth <= 1 && this.naturalHeight <= 1){this.style.opacity='0';}"
+                />
+            `;
+
+            // 選項按鈕
+            optionsContainer.innerHTML = data.options.map((option, index) => {
+                // 嘗試移除選項前的標籤 (A、B、C)
+                const optionText = option.text.replace(/^[A-Za-z]\s*[、]\s*/, '').trim(); 
+                return `
+                    <button 
+                        onclick="handleAnswer('${option.next}')" 
+                        class="quiz-button-effect w-full text-left p-4 rounded-xl bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition duration-150 ease-in-out text-gray-700 font-medium text-base md:text-lg"
+                    >
+                        ${optionText}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        /** 6. 渲染結果畫面 (圖片 1:1 正方形) */
+        function renderResult(resultId, resultData) {
+            
+            // 處理結果名稱，只取中文部分
+            const chineseName = resultData.title.split('（')[0].trim();
+            
+            // 停止音樂
+            bgMusic.pause();
+
+            showScreen('result');
+            
+            // 使用負邊距讓圖片在卡片頂部實現「全出血」效果
+            resultScreen.innerHTML = `
+                <div class="-mx-6 md:-mx-10 -mt-6 md:-mt-10 text-center">
+                    
+                    <!-- 結果圖片 (1:1 正方形，通過內聯樣式覆寫 padding-top: 56.25%) -->
+                    <div class="image-container bg-indigo-900 mx-auto w-full shadow-lg rounded-t-3xl" style="padding-top: 100%;">
+                        <img 
+                            src="${resultId}.jpg" 
+                            alt="測驗結果圖片：${chineseName}" 
+                            class="rounded-t-3xl"
+                            onerror="this.style.opacity='0';"
+                            onload="if(this.naturalWidth <= 1 && this.naturalHeight <= 1){this.style.opacity='0';}"
+                        />
+                    </div>
+
+                    <!-- 標題和按鈕區 (重新加上內邊距) -->
+                    <div class="space-y-8 px-6 md:px-10 pt-8 pb-4">
+                        <p class="text-lg font-semibold text-indigo-500">
+                            恭喜您！您的濕婆法相是：
+                        </p>
+                        <h3 class="text-5xl md:text-6xl font-black text-indigo-900 leading-tight tracking-tighter">
+                            ${chineseName}
+                        </h3>
+                        
+                        <!-- 按鈕區 -->
+                        <div class="space-y-4 pt-4">
+                            <a href="${resultData.url}" target="_blank" class="block mx-auto w-full max-w-xs py-4 bg-indigo-600 text-white text-xl font-bold rounded-full quiz-button-effect hover:bg-indigo-700 transition duration-300">
+                                點擊查看詳細分析
+                            </a>
+                            <button onclick="window.location.reload();" class="block mx-auto w-full max-w-xs py-4 bg-gray-200 text-gray-700 text-xl font-bold rounded-full quiz-button-effect hover:bg-gray-300 transition duration-300 transform-none shadow-none">
+                                重新開始測驗
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /** 7. 啟動測驗流程 */
+        document.addEventListener('DOMContentLoaded', () => {
+            // 嘗試播放音樂，處理瀏覽器自動播放限制
+            bgMusic.volume = 0.5;
+            bgMusic.play().catch(e => console.log("Audio autoplay blocked."));
+            
+            showScreen('start');
+            
+            startButton.addEventListener('click', () => {
+                // 確保在使用者首次互動後能夠播放音樂
+                bgMusic.play().catch(e => console.log("Audio play after interaction failed."));
+
+                currentQuestionId = "Q1";
+                history = []; 
+                renderQuestion(currentQuestionId);
+            });
+        });
+
+    </script>
+</body>
+</html>
