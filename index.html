@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>你是哪種濕婆？(V2.1)</title>
+    <title>你是哪種濕婆？(優化版)</title>
     <!-- 載入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -58,12 +58,22 @@
                     發覺內心深處的濕婆法相，揭曉專屬開運法則
                 </p>
             </div>
-            <button id="start-button" class="quiz-button-effect w-full max-w-xs py-4 bg-indigo-600 text-white text-xl font-bold rounded-full hover:bg-indigo-700 transition duration-300 transform scale-100 hover:scale-[1.02]">
+            
+            <!-- 載入容器 (圖片加載時顯示) -->
+            <div id="loading-container" class="space-y-2 w-full max-w-xs mx-auto">
+                <p id="loading-text" class="text-sm font-semibold text-indigo-600">
+                    圖片加載中 (0%)
+                </p>
+                <div class="h-2 bg-indigo-100 rounded-full overflow-hidden">
+                    <div id="visual-progress-bar" class="h-full bg-indigo-600 transition-all duration-150 ease-linear" style="width: 0%;"></div>
+                </div>
+            </div>
+            
+            <!-- 開始按鈕 (圖片加載完成後才顯示) -->
+            <button id="start-button" class="quiz-button-effect w-full max-w-xs py-4 bg-indigo-600 text-white text-xl font-bold rounded-full hover:bg-indigo-700 transition duration-300 transform scale-100 hover:scale-[1.02] hidden">
                 開始測試
             </button>
-            <p id="loading-indicator" class="text-sm font-medium text-indigo-500 hidden">
-                圖片加載中，請稍候...
-            </p>
+            
             <!-- 封面頁底部版權文字 (使用 mt-auto 將其推到最下方) -->
             <p class="text-xs text-gray-400 mt-auto pt-8">
                 靈根吉吉開運好物製販所 2025年出品
@@ -116,9 +126,6 @@
         
     </div>
     
-    <!-- 音訊元素：若無實際音訊檔，可能無法播放，但保留結構 -->
-    <audio id="bg-music" loop preload="auto" src="12shiva.mp3"></audio>
-
     <script>
         // --- 靜態資料 ---
         const quizData = {
@@ -178,14 +185,18 @@
         const quizScreen = $('quiz-screen');
         const resultScreen = $('result-screen');
         const startButton = $('start-button');
-        const bgMusic = $('bg-music');
         const questionText = $('question-text');
         const imagePlaceholder = $('image-placeholder');
         const optionsContainer = $('options-container');
         const redoButton = $('redo-button');
         const progressBar = $('progress-bar');
         const levelDisplay = $('level-display');
-        const loadingIndicator = $('loading-indicator');
+        
+        // 新增的載入元素
+        const loadingContainer = $('loading-container');
+        const loadingText = $('loading-text');
+        const visualProgressBar = $('visual-progress-bar');
+
 
         // --- 功能函數 ---
 
@@ -211,18 +222,27 @@
             const totalImages = allImages.size;
 
             return new Promise(resolve => {
-                // 如果沒有圖片要載入，直接解決 Promise
                 if (totalImages === 0) {
                     resolve();
                     return;
                 }
+                
+                // 初始化進度條
+                loadingText.textContent = `圖片加載中 (0%)`;
+                visualProgressBar.style.width = `0%`;
+
 
                 allImages.forEach(src => {
                     const img = new Image();
                     img.src = src;
                     img.onload = img.onerror = () => {
                         loadedCount++;
-                        // 這裡可以選擇更新加載進度提示 (如果需要)
+                        const percentage = Math.round((loadedCount / totalImages) * 100);
+                        
+                        // 更新視覺回饋
+                        loadingText.textContent = `圖片加載中 (${percentage}%)`;
+                        visualProgressBar.style.width = `${percentage}%`;
+
                         if (loadedCount === totalImages) {
                             resolve(); // 所有圖片載入完成
                         }
@@ -337,9 +357,6 @@
             // 處理結果名稱，只取中文部分
             const chineseName = resultData.title.split('（')[0].trim();
             
-            // 停止音樂
-            bgMusic.pause();
-
             showScreen('result');
             
             // 使用負邊距讓圖片在卡片頂部實現「全出血」效果
@@ -382,25 +399,19 @@
 
         /** 8. 啟動測驗流程 */
         document.addEventListener('DOMContentLoaded', () => {
-            // 在開始時預先載入所有圖片
-            loadingIndicator.classList.remove('hidden');
-            startButton.disabled = true;
+            // 初始狀態：載入容器顯示，按鈕隱藏
+            loadingContainer.classList.remove('hidden');
+            startButton.classList.add('hidden');
 
             preloadImages().then(() => {
-                loadingIndicator.textContent = '加載完成！';
-                startButton.disabled = false;
-                
-                // 嘗試播放音樂，處理瀏覽器自動播放限制
-                bgMusic.volume = 0.5;
-                bgMusic.play().catch(e => console.log("Audio autoplay blocked."));
+                // 載入完成：隱藏載入容器，顯示按鈕
+                loadingContainer.classList.add('hidden');
+                startButton.classList.remove('hidden');
                 
                 showScreen('start');
             });
             
             startButton.addEventListener('click', () => {
-                // 確保在使用者首次互動後能夠播放音樂
-                bgMusic.play().catch(e => console.log("Audio play after interaction failed."));
-
                 currentQuestionId = "Q1";
                 history = []; 
                 renderQuestion(currentQuestionId);
