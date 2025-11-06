@@ -59,17 +59,14 @@
                 </p>
             </div>
             
-            <!-- 載入容器 (圖片加載時/未載入 Q1 時顯示) -->
-            <div id="loading-container" class="space-y-2 w-full max-w-xs mx-auto">
-                <p id="loading-text" class="text-sm font-semibold text-indigo-600">
-                    圖片加載中 (0%)
+            <!-- 載入指示器 (只顯示文字) -->
+            <div id="loading-container" class="w-full max-w-xs mx-auto">
+                <p id="loading-text" class="text-lg font-semibold text-indigo-600 animate-pulse">
+                    正在載入啟動圖片...
                 </p>
-                <div class="h-2 bg-indigo-100 rounded-full overflow-hidden">
-                    <div id="visual-progress-bar" class="h-full bg-indigo-600 transition-all duration-150 ease-linear" style="width: 0%;"></div>
-                </div>
             </div>
             
-            <!-- 開始按鈕 (Q1 圖片載入完成後才顯示，並替換載入容器的位置) -->
+            <!-- 開始按鈕 (Q1 圖片載入完成後才顯示) -->
             <button id="start-button" class="quiz-button-effect w-full max-w-xs py-4 bg-indigo-600 text-white text-xl font-bold rounded-full hover:bg-indigo-700 transition duration-300 transform scale-100 hover:scale-[1.02] hidden">
                 開始測試
             </button>
@@ -195,73 +192,24 @@
         // 載入元素
         const loadingContainer = $('loading-container');
         const loadingText = $('loading-text');
-        const visualProgressBar = $('visual-progress-bar');
 
 
         // --- 功能函數 ---
 
-        /** 1. 圖片預加載 (優化為分級載入) */
-        function preloadImages() {
-            const allImages = new Set();
-            let isQ1Loaded = false;
-            
-            // 收集所有問題圖片和結果圖片的 URL
-            for (const id in quizData) {
-                const data = quizData[id];
-                if (data.image) {
-                    allImages.add(data.image);
-                }
-            }
-            for (let i = 1; i <= 12; i++) {
-                const resultId = 'A' + i.toString().padStart(2, '0');
-                allImages.add(`${resultId}.jpg`);
-            }
+        /** 1. 圖片啟動載入 (僅載入 Q1.jpg) */
+        function loadQ1Image() {
+            loadingText.textContent = "正在載入啟動圖片...";
 
-            let loadedCount = 0;
-            const totalImages = allImages.size;
-            let imagesToLoad = Array.from(allImages);
+            // 創建 Image 物件來載入 Q1.jpg
+            const q1Image = new Image();
+            q1Image.src = "Q1.jpg";
 
-            return new Promise(resolve => {
-                if (totalImages === 0) {
-                    resolve();
-                    return;
-                }
-                
-                // 初始化進度條
-                loadingText.textContent = `圖片加載中 (0%)`;
-                visualProgressBar.style.width = `0%`;
-
-
-                imagesToLoad.forEach(src => {
-                    const img = new Image();
-                    img.src = src;
-                    img.onload = img.onerror = () => {
-                        loadedCount++;
-                        const percentage = Math.round((loadedCount / totalImages) * 100);
-                        
-                        // --- 關鍵優化邏輯 ---
-                        if (src === 'Q1.jpg' && !isQ1Loaded) {
-                            // 只要 Q1 載入完成，就立即解除阻擋 (無論總進度多少)
-                            isQ1Loaded = true;
-                            loadingContainer.classList.add('hidden');
-                            startButton.classList.remove('hidden');
-                            // 同時改變載入文字，提供用戶反饋
-                            loadingText.textContent = `載入完成，可開始測試！`;
-                        }
-
-                        // 持續更新視覺回饋 (即使按鈕已顯示，也應更新進度直到 100%)
-                        if (loadedCount !== totalImages) {
-                            visualProgressBar.style.width = `${percentage}%`;
-                            loadingText.textContent = `圖片加載中 (${percentage}%)`;
-                        } else {
-                            visualProgressBar.style.width = `100%`;
-                            // 總載入完成，解決 Promise
-                            resolve(); 
-                        }
-                        // --- 結束關鍵優化邏輯 ---
-                    };
-                });
-            });
+            q1Image.onload = q1Image.onerror = () => {
+                // Q1 圖片載入完成 (或失敗)，立即解除鎖定
+                loadingContainer.classList.add('hidden'); // 隱藏載入提示
+                startButton.classList.remove('hidden'); // 顯示開始按鈕
+                // 為了用戶體驗，如果載入失敗，我們也允許其繼續，因為 Q1.jpg 預期是存在的。
+            };
         }
 
 
@@ -339,6 +287,7 @@
             imagePlaceholder.className = `image-container bg-indigo-200 mx-auto w-full shadow-xl rounded-2xl`;
             
             // 圖片路徑使用相對路徑，並添加錯誤處理
+            // 圖片由瀏覽器即時載入，依靠瀏覽器的快取和並行下載能力
             imagePlaceholder.innerHTML = `
                 <img 
                     src="${data.image}" 
@@ -416,11 +365,8 @@
             loadingContainer.classList.remove('hidden');
             startButton.classList.add('hidden');
 
-            // 開始分級載入
-            preloadImages().then(() => {
-                // 所有圖片載入完成，但 UI 已經在 Q1 載入時解鎖
-                // 可以在這裡放一些最終完成的確認邏輯
-            });
+            // 僅載入第一張圖片
+            loadQ1Image();
             
             startButton.addEventListener('click', () => {
                 currentQuestionId = "Q1";
